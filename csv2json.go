@@ -25,7 +25,7 @@ func dropdead(message string) {
 }
 
 func maybe_comma(index int) {
-	if index == 0 || (index == 1 && header == true) {
+	if index == 0 || (index == 1 && header) {
 		fmt.Println()
 	} else {
 		fmt.Println(",")
@@ -34,26 +34,17 @@ func maybe_comma(index int) {
 
 func is_int(value string) bool {
 	_, err := strconv.ParseInt(value, 10, 64)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 func is_float(value string) bool {
 	_, err := strconv.ParseFloat(value, 64)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 func has_quotes(value string) bool {
 	i := strings.Index(value, "\"")
-	if i == -1 {
-		return false
-	}
-	return true
+	return i != -1
 }
 
 func embed_quotes(value string) string {
@@ -115,7 +106,7 @@ func init() {
 	header = *h
 
 	if *d == "\\t" {
-		*d = fmt.Sprint("\t")
+		*d = "\t"
 	}
 
 	if len(*d) > 1 {
@@ -125,7 +116,7 @@ func init() {
 	delimiter = []rune(*d)[0]
 
 	if *n != "" {
-		if header == true {
+		if header {
 			dropdead("Use of --names overrides --header")
 		}
 		headers = strings.Split(*n, ",")
@@ -137,7 +128,7 @@ func init() {
 func main() {
 	file, err := os.Open(filename)
 	if err != nil {
-		dropdead(fmt.Sprintf("Error while reading the file. Do all rows have the same number of columns?", err))
+		dropdead(fmt.Sprintf("Error while reading the file. Do all rows have the same number of columns? %s", err))
 	}
 
 	reader := csv.NewReader(file)
@@ -154,21 +145,25 @@ func main() {
 
 	fmt.Print("[")
 	for i, eachrecord := range records {
-		if i == 0 && header == true {
-			if names == false {
+		if i == 0 && header {
+			if !names {
 				headers = eachrecord
 			}
 			continue
 		}
 
-		if header == true && len(eachrecord) > len(headers) {
+		if header && len(eachrecord) > len(headers) {
 			dropdead(fmt.Sprintf("Data row has more columns (%d) than the headers (%d)\n", len(eachrecord), len(headers)))
 		}
 
 		maybe_comma(i)
 		fmt.Print("  {")
 		for k, v := range eachrecord {
-			maybe_comma(k)
+			if k > 0 {
+				fmt.Println(",")
+			} else {
+				fmt.Println()
+			}
 			if header {
 				fmt.Printf("    \"%s\": %s", headers[k], formatted_value(v))
 			} else {
